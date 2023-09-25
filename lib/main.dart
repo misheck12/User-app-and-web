@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:meta_seo/meta_seo.dart';
 import 'package:sixam_mart/controller/auth_controller.dart';
 import 'package:sixam_mart/controller/cart_controller.dart';
 import 'package:sixam_mart/controller/localization_controller.dart';
@@ -22,6 +23,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:sixam_mart/view/screens/home/widget/cookies_view.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'helper/get_di.dart' as di;
 
@@ -40,6 +42,8 @@ Future<void> main() async {
       messagingSenderId: 'G-L1GNL2YV61',
       projectId: 'ammart-8885e',
     ));
+
+    MetaSEO().config();
   }
   await Firebase.initializeApp();
   Map<String, Map<String, String>> languages = await di.init();
@@ -93,11 +97,13 @@ class _MyAppState extends State<MyApp> {
       }
       Get.find<CartController>().getCartData();
     }
-    Get.find<SplashController>().getConfigData().then((bool isSuccess) async {
+    Get.find<SplashController>().getConfigData(loadLandingData: GetPlatform.isWeb).then((bool isSuccess) async {
       if (isSuccess) {
         if (Get.find<AuthController>().isLoggedIn()) {
           Get.find<AuthController>().updateToken();
-          await Get.find<WishListController>().getWishList();
+          if(Get.find<SplashController>().module != null) {
+            await Get.find<WishListController>().getWishList();
+          }
         }
       }
     });
@@ -116,9 +122,10 @@ class _MyAppState extends State<MyApp> {
             scrollBehavior: const MaterialScrollBehavior().copyWith(
               dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch},
             ),
-            theme: themeController.darkTheme ? themeController.darkColor == null ? dark() : dark(color
-                : themeController.darkColor!) : themeController.lightColor == null ? light()
-                : light(color: themeController.lightColor!),
+            // theme: themeController.darkTheme ? themeController.darkColor == null ? dark() : dark(color
+            //     : themeController.darkColor!) : themeController.lightColor == null ? light()
+            //     : light(color: themeController.lightColor!),
+            theme: themeController.darkTheme ? dark() : light(),
             locale: localizeController.locale,
             translations: Messages(languages: widget.languages),
             fallbackLocale: Locale(AppConstants.languages[0].languageCode!, AppConstants.languages[0].countryCode),
@@ -126,6 +133,19 @@ class _MyAppState extends State<MyApp> {
             getPages: RouteHelper.routes,
             defaultTransition: Transition.topLevel,
             transitionDuration: const Duration(milliseconds: 500),
+            builder: (BuildContext context, widget) => Material(
+              child: Stack(children: [
+                widget!,
+
+                GetBuilder<SplashController>(builder: (splashController){
+                  if(!splashController.savedCookiesData && !splashController.getAcceptCookiesStatus(splashController.configModel != null ? splashController.configModel!.cookiesText! : '')){
+                    return ResponsiveHelper.isWeb() ? const Align(alignment: Alignment.bottomCenter, child: CookiesView()) : const SizedBox();
+                  }else{
+                    return const SizedBox();
+                  }
+                })
+              ]),
+            ),
           );
         });
       });
